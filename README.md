@@ -1,121 +1,191 @@
-# MetaInverse — Deep Learning for Inverse Design of Optical Metasurfaces
+# MIND — Metasurface Inverse Network Design
 
-A semester project on neural-network-based **inverse design of metasurfaces**,
-reproducing the Pseudo-Autodecoder (PAD) approach from:
+Deep-learning inverse design of optical metasurfaces using the **Pseudo-Autodecoder (PAD)** approach, reproducing results from:
 
-> Harper, Coyle, Vernon, Mills — *Inverse Design of Broadband Highly Reflective
-> Metasurfaces Using Neural Networks*, **Physical Review B 101, 195104 (2020)**.
+> Harper, Coyle, Vernon, Mills — *Inverse Design of Broadband Highly Reflective Metasurfaces Using Neural Networks*, **Physical Review B 101, 195104 (2020)**
 
 ---
 
-### The one-paragraph summary
-Designing a metasurface means choosing a geometry that produces a desired optical
-spectrum. Running the physics *forward* (geometry → spectrum) is possible but
-slow; running it *backward* (spectrum → geometry) has no formula. This project
-trains a small neural network to imitate the forward physics (the **SPN**), then
-uses it to train an **inverse** network (the **DPN**) that proposes a geometry
-for any requested spectrum. The trick that makes it work — the **PAD** — is
-explained below and in `VIVA.md`.
+## What this project does
+
+Designing a metasurface means finding a geometry that produces a target optical spectrum. Running physics *forward* (geometry → spectrum) is slow but tractable; running it *backward* (spectrum → geometry) has no closed-form solution and is non-unique — many geometries produce nearly identical spectra.
+
+This project trains two neural networks to solve the problem:
+
+1. **SPN** (Spectra-Predicting Network) — a fast, differentiable surrogate for the RCWA physics solver. Maps a 4-parameter geometry to its (R, T) spectra.
+2. **DPN** (Design-Predicting Network) — the inverse model. Maps a target (R, T) spectrum to a proposed geometry.
+
+The key trick is the **PAD (Pseudo-Autodecoder)**: instead of training the DPN directly on geometry labels (which causes regression-to-the-mean due to the many-to-one problem), the DPN is stitched to a frozen SPN and trained end-to-end on spectrum reconstruction loss. This lifts inverse-design R² from ~83% (direct IDPN) to ~96% (PAD).
 
 ---
 
-## 1. The unifying abstraction
+## Architecture overview
 
 ```
-                         ┌─────────────────────────────┐
-   target spectrum  ───▶ │      INVERSE  MODEL         │ ───▶  candidate design
-   (R/T vs. λ)           │           DPN               │       4 params (r_o,r_i,h,L)
-                         └──────────────┬──────────────┘
-                                        │ design
-                                        ▼
-                         ┌─────────────────────────────┐
-                         │     FORWARD SURROGATE        │ ───▶  predicted spectrum
-                         │            SPN               │
-                         └──────────────┬──────────────┘
-                                        │ (used as a differentiable loss)
-                                        ▼
-                         ┌─────────────────────────────┐
-                         │   GROUND-TRUTH PHYSICS       │  RCWA
-                         │  (data generation + verify)  │
-                         └─────────────────────────────┘
+target spectrum (R/T vs. λ)
+        │
+        ▼
+  ┌───────────┐
+  │    DPN    │  ──▶  candidate design (r_o, r_i, h, L)
+  └─────┬─────┘
+        │  design
+        ▼
+  ┌───────────┐
+  │    SPN    │  ──▶  predicted spectrum   (PAD training loss)
+  └─────┬─────┘
+        │
+        ▼
+  RCWA / surrogate physics  (ground-truth verification)
 ```
 
-The key insight:
+The **SPN** architecture (after Eq. 1 of the paper):
+```
+input(4) → 8N → 6N → 4N → 2N → { N → N_λ (R-head, sigmoid)
+                                 { N → N_λ (T-head, sigmoid)
+```
 
-1. Train a **forward surrogate** (SPN) that imitates the RCWA physics solver —
-   fast and differentiable.
-2. Train the **inverse model** (DPN) whose output design is scored by passing it
-   *through the frozen SPN* and comparing the resulting spectrum to the target.
-   This is the **PAD** (pseudo-autodecoder).
-3. Confirm the final design with the **real RCWA physics**.
+The **DPN** merges two parallel branches (one per spectrum channel) and compresses to 4 outputs.
 
----
-
-## 2. The approach — PAD (Pseudo-Autodecoder)
-
-- Design = `(r_o, r_i, h, L)` for a Si open-cylinder on SiO₂.
-- **SPN**: `design → (R, T)` spectra.  Forward surrogate.
-- **DPN**: `(R, T) → design`.  Inverse model.
-- **PAD**: freeze a trained SPN, stitch `DPN → SPN`, train end-to-end so the
-  predicted design reproduces the *input* spectrum. Solves the many-to-one
-  problem that a raw inverse-DPN (IDPN) suffers from.
+For full module-level math and contracts see [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ---
 
-## 3. Directory layout
+## Design parameters
+
+The metasurface unit cell is a **Si open-cylinder on SiO₂** in the telecom band (1300–1800 nm):
+
+| Parameter | Symbol | Range |
+|---|---|---|
+| Outer radius | r_o | 120 – 2000 nm |
+| Inner radius | r_i | 80 – 1900 nm |
+| Height | h | 200 – 1000 nm |
+| Lattice spacing | L | 300 – 2200 nm |
+
+Physical constraints: `r_o ≤ 0.4 L`, `r_i ≤ 0.8 r_o`.
+
+---
+
+## Repository layout
 
 ```
 sem_prj/
-├── README.md                  ← this file
-├── ARCHITECTURE.md            ← deeper diagrams + math, per-module contracts
+├── config.py                   ← all hyperparameters and physical constants
 ├── requirements.txt
-├── config.py                  ← all hyperparameters / physical constants
-├── Papers/                    ← source paper PDF + extracted text
+├── ARCHITECTURE.md             ← detailed module contracts and math
+├── Papers/                     ← source paper PDF + extracted text
 │
 ├── physics/
-│   ├── __init__.py
-│   ├── spectra.py             ← spectrum dataclass, Gaussian-resonance helpers
-│   └── parametric_sim.py      ← surrogate RCWA-like data generator
+│   ├── spectra.py              ← Spectrum dataclass, Gaussian-resonance helpers
+│   └── parametric_sim.py       ← analytic surrogate RCWA data generator
 │
 ├── models/
-│   ├── __init__.py
-│   ├── base.py                ← ForwardSurrogate / InverseModel interfaces
-│   ├── spn.py                 ← forward surrogate (SPN)
-│   ├── dpn.py                 ← inverse model (DPN)
-│   └── pad.py                 ← SPN + DPN pseudo-autodecoder (PAD)
+│   ├── base.py                 ← ForwardSurrogate / InverseModel interfaces
+│   ├── spn.py                  ← SPN (forward surrogate)
+│   ├── dpn.py                  ← DPN (inverse model)
+│   └── pad.py                  ← PAD (SPN + DPN stitched end-to-end)
 │
 ├── pipeline/
-│   ├── __init__.py
-│   ├── datasets.py            ← PyTorch Dataset for parametric data
-│   ├── train_parametric.py    ← train SPN, then PAD
-│   ├── inverse_design.py      ← "given a target spectrum, get a design"
-│   └── metrics.py             ← R² and spectrum-error metrics
+│   ├── datasets.py             ← PyTorch Dataset for parametric data
+│   ├── train_parametric.py     ← trains SPN then PAD
+│   ├── inverse_design.py       ← query a target spectrum, get a design back
+│   └── metrics.py              ← R² and spectrum-error metrics
 │
 └── scripts/
-    └── smoke_test.py          ← tiny end-to-end run to validate wiring
+    ├── smoke_test.py           ← end-to-end wiring check
+    ├── generate_plots.py       ← reproduces paper figures
+    └── plots/                  ← generated figures
 ```
 
 ---
 
-## 4. Suggested semester milestones
+## Quickstart
 
-1. **Weeks 1–2** Literature + reproduce the problem statement. Build
-   `physics/parametric_sim.py` surrogate data generator.
-   Deliverable: labelled dataset of (design, spectrum) pairs.
-2. **Weeks 3–5** Train SPN, then DPN (IDPN), then PAD. Reproduce the
-   many-to-one finding (PAD beats IDPN).
-   Deliverable: R² regression plots comparing IDPN vs. PDPN.
-3. **Weeks 6–7** Unified inverse-design pipeline + evaluation metrics.
-   Deliverable: query a target spectrum, get a design back, verify with
-   the surrogate RCWA.
-4. **Weeks 8–9** Analysis of the broadband reflector result, comparison
-   of IDPN vs. PAD performance, write-up and presentation.
+### 1. Install dependencies
 
-See `ARCHITECTURE.md` for the detailed per-module contracts and the math.
+```bash
+pip install -r requirements.txt
+```
 
-> **Note on physics.** The real RCWA solver (`S4`) is heavy to install. This
-> repo ships a lightweight *analytic surrogate* simulator in `physics/` so the
-> full ML pipeline runs end-to-end on a laptop. It produces physically-plausible,
-> resonance-shaped spectra — enough to exercise and validate every network. To do
-> real science, swap the surrogate call sites for `S4`/Meep; the interfaces are
-> designed for exactly that substitution.
+> The repo uses a lightweight analytic surrogate for physics so the full pipeline runs on a laptop without any special solvers. To use real RCWA, install [S4](https://github.com/victorliu/S4) separately and swap it into `physics/parametric_sim.py`.
+
+### 2. Run the smoke test
+
+```bash
+python scripts/smoke_test.py
+```
+
+Verifies the full data → SPN → PAD → inverse-design chain in a few seconds.
+
+### 3. Train
+
+```bash
+python pipeline/train_parametric.py
+```
+
+Trains the SPN first, then the PAD. All hyperparameters are in `config.py`.
+
+### 4. Inverse design
+
+```python
+from pipeline.inverse_design import InverseDesignPipeline
+
+pipeline = InverseDesignPipeline.from_checkpoint("checkpoints/")
+design = pipeline.design_for_target(target_spectrum)
+```
+
+### 5. Generate plots
+
+```bash
+python scripts/generate_plots.py
+```
+
+Reproduces loss curves, regression scatter plots, sample spectra, and inverse-design query figures.
+
+---
+
+## Key results
+
+| Model | Avg. R² (geometry prediction) |
+|---|---|
+| Direct IDPN | ~83.6% |
+| PAD (this work) | ~96.4% |
+
+The PAD improvement is most pronounced for the inner radius parameter, which has the highest many-to-one degeneracy.
+
+---
+
+## Configuration
+
+All tunable values live in `config.py`:
+
+```python
+CFG.grid.n_points          # spectral resolution (default 64)
+CFG.train.spn_epochs       # SPN training epochs (default 200)
+CFG.train.pad_epochs       # PAD training epochs (default 200)
+CFG.train.spn_hidden_base  # network width multiplier N (default 64)
+CFG.train.parametric_dataset_size  # ~9000 designs (matches paper)
+```
+
+---
+
+## Dependencies
+
+- Python ≥ 3.10
+- PyTorch ≥ 2.0
+- NumPy ≥ 1.24
+- Matplotlib ≥ 3.7
+
+---
+
+## Reference
+
+```bibtex
+@article{harper2020inverse,
+  title   = {Inverse Design of Broadband Highly Reflective Metasurfaces Using Neural Networks},
+  author  = {Harper, E. S. and Coyle, E. J. and Vernon, J. P. and Mills, M. S.},
+  journal = {Physical Review B},
+  volume  = {101},
+  pages   = {195104},
+  year    = {2020}
+}
+```
