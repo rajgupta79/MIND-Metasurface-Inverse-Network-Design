@@ -1,0 +1,847 @@
+
+===== PAGE 1 =====
+PHYSICAL REVIEW B 101, 195104 (2020)
+Inverse design of broadband highly reﬂective metasurfaces using neural networks
+Eric S. Harper
+,1 Eleanor J. Coyle
+,1,2 Jonathan P. Vernon
+,1 and Matthew S. Mills
+1,*
+1Materials and Manufacturing Directorate, Air Force Research Laboratory, 2179 12th St., Wright-Patterson Air Force Base, Ohio 45433, USA
+2Azimuth Corporation, 4027 Colonel Glenn Hwy #230, Beavercreek, Ohio 45431, USA
+(Received 9 January 2020; revised manuscript received 21 February 2020; accepted 25 February 2020;
+published 4 May 2020)
+Metamaterials exhibit optical properties not observed in traditional materials. Such behavior emerges from the
+interaction of light with precisely engineered subwavelength features built from different constituent materials.
+Recent research into the design and fabrication of metamaterial-based devices has established a foundation
+for the next generation of functional materials. Of particular interest is the all-dielectric metasurface, a two-
+dimensional metamaterial exploiting shape-dependent resonant features while avoiding losses through the use of
+dielectric building blocks. However, even this simple metamaterial class has a nearly inﬁnite number of possible
+conﬁgurations; researchers now require new methods to efﬁciently explore these types of design spaces. In this
+work, we employ rigorous coupled wave analysis to calculate reﬂection and transmission spectra associated
+with a class of open-cylinder all-dielectric metasurface. By altering the geometric parameters of open-cylinder
+metasurfaces, we generate a sparse training data set and construct artiﬁcial neural networks capable of relating
+metasurface geometries to reﬂection and transmission spectra. Here, we successfully demonstrate that pseudo
+autodecoder neural networks can suggest device geometries based on a requested optical performance—inverting
+the design process for this metasurface class. As an example, we query for and discover a particular open-cylinder
+metasurface displaying a reﬂection band R ⩾99% centered at λ0 = 1550 nm that is much broader λ = 450 nm
+than anything reported for optical metasurfaces. We then analyze the modal interplay in the open-cylinder
+metasurface to better understand the underlying physics driving the broadband behavior. Ultimately, we conclude
+that neural networks are ideally suited for generally approaching these types of complex inverse design problems.
+DOI: 10.1103/PhysRevB.101.195104
+I. INTRODUCTION
+Metamaterials exhibit novel properties due to ﬁne-tuned
+light-matter interactions with subwavelength scatterers. Even
+though such devices were theorized long ago [1], only recently
+have devices with feature sizes relevant to infrared and vis-
+ible wavelengths become experimentally viable [2]. To date,
+various bottom-up and top-down fabrication approaches have
+driven the design and fabrication of these structures depend-
+ing on the constituent materials in use and the geometrical
+arrangements sought after [3–8]. Metamaterials demonstrate
+potential as compact optical components in a variety of appli-
+cations, including the design and manufacture of plasmonic
+metasurfaces [9,10], solar sails [11], optical absorbers [12,13],
+near-perfect reﬂectors [14–16], and beam collimators [17].
+Simpler metamaterials have intriguing optical properties as
+well. The two-dimensional metasurface, for example, is a
+subclass composed of a single patterned layer and has been in-
+vestigated for a variety of applications [18–20]. As a particular
+example, the all-dielectric metasurface [21–25] can possess
+desirable performance with regards to highly reﬂective low-
+loss devices and can even be harnessed in tunable systems
+[26,27].
+Even a relatively simple metasurface has a near-inﬁnite
+design space in terms of the possible ways to conﬁgure the
+*matthew.mills.25@us.af.mil
+constituent materials and surface geometry. This is further
+complicated by the incoming radiation deﬁned by its ele-
+vation and azimuthal angle of incidence, polarization, beam
+shape, wavelength, and even nonlinear interactions [28]—
+all of which affect the response of the metasurface device.
+Even with the most modern high-performance computing re-
+sources and optimized computational electromagnetic meth-
+ods (CEMs), one simply cannot exhaustively search the mas-
+sive parameter spaces in question. Because a comprehensive
+“brute-force” search is untenable, any attempts at creating
+a metamaterial with a targeted performance must leverage
+an understanding of the underlying physics. For example,
+Mie scattering concepts [15,29,30], Fano resonance behaviors
+[6,24,26,31], and adjoint methods [32] have been used to
+design particular subsets of device geometries. However, there
+exists no prescription for inverting Maxwell’s equations; thus,
+one cannot generally design an arbitrary metamaterial starting
+with targeted optical constraints. In a few limited cases, tradi-
+tional optimization routines are capable of designing meta-
+surfaces with desired optical properties [33–36]; however,
+each new targeted property and/or device geometry must be
+handled individually, ultimately limiting the overall efﬁciency
+of the discovery process. As an example, genetic algorithms
+can be implemented to ﬁne-tune design parameters but tend
+to struggle in higher-dimensional searches, often getting stuck
+in the local minima of the large parameter space. As a result,
+efﬁciently approaching this inverse design problem continues
+to be a subject of considerable interest [37].
+2469-9950/2020/101(19)/195104(9)
+195104-1
+©2020 American Physical Society
+
+===== PAGE 2 =====
+HARPER, COYLE, VERNON, AND MILLS
+PHYSICAL REVIEW B 101, 195104 (2020)
+Machine learning (ML) methods have recently risen in
+prominence to more judiciously handle the metasurface in-
+verse design problem [7,38–43]. Artiﬁcial neural networks
+(ANNs) [44] are particularly well suited for this task because
+they are function approximators: a neural network learns a
+multifunctional relationship⃗y = f (⃗x) when trained on input
+data⃗x and output data⃗y. If an inverse relationship between the
+input and output data exists, the neural network may instead
+be trained to learn the inverse relationship⃗x = f −1( f (⃗x)) =
+g(⃗y) [45]. In fact, recent work combining CEMs and ML
+has now provided a pathway for exploring these kinds of
+higher-dimensional inverse problems [7,38,39,46].
+In this work, we consider a system of nanoscale Si open
+cylinders [47] on a SiO2 substrate. This geometry is a gener-
+alized version of a recently investigated all-dielectric solid-
+cylinder metasurface with an experimentally demonstrated
+broadband near-perfect reﬂection in the short-wave infrared
+regime (R > 98% across a λ = 200 nm wide bandwidth
+covering λ0 = 1550 nm) [16]. With this previous work serving
+as a precedent, this paper seeks to demonstrate the power
+of ANNs for inverse metamaterial design by querying for an
+all-dielectric open-cylinder metasurface that out performs the
+previously considered solid-cylinder metasurface in terms of
+both broadband reﬂection and peak reﬂectivity. We calculate
+the reﬂection and transmission spectra of open-cylinder meta-
+surfaces randomly sampled from a four-dimensional (4D)
+input parameter space using rigorous coupled-wave analysis
+(RCWA). The output of these simulations serves as training
+data sets for ANNs built to suggest an inverse design solution.
+The most predictive success is observed with an ANN trained
+in a pseudo autodecoder (PAD) neural network architecture
+[48]. We then utilize the PAD-trained neural network to
+uncover a highly reﬂective, broadband open-cylinder meta-
+surface centered around the telecommunications wavelength
+λ0 = 1550 nm exhibiting R ⩾99% over twice the bandwidth
+λ = 450 nm previously reported. Following the work of
+Ref. [22], we then analyze the modes arising within the open-
+cylinder metasurface to better understand the origin of the
+highly reﬂective broadband behavior. We conclude that al-
+though this method could be used, it becomes untenable with
+increasing metasurface complexity. Thus, the ML protocols
+deﬁned in this work provide a more robust and general method
+in designing metasurfaces, avoiding the need to derive ad hoc
+solutions for individual geometries. The PAD ANN approach
+accelerates the overall design process and enables the rapid
+discovery of tailored functional materials.
+II. METASURFACE ANNs: TRAINING AND
+ARCHITECTURE
+The metasurface class explored here consists of a periodic
+array of Si open cylinders on a SiO2 substrate surrounded
+by air, as illustrated in Fig. 1. The computational electro-
+magnetic method of choice is RCWA since it is well suited
+for simulating such a periodic device [22]. RCWA efﬁciently
+models the Floquet boundary conditions in the x and y
+directions while avoiding any approximations to Maxwell’s
+equations. This allows for computationally inexpensive ex-
+traction of metasurface modes and reﬂection and transmission
+coefﬁcients. We use the open source S4 [49] RCWA package
+to simulate our metasurfaces coupled with the SIGNAC data
+FIG. 1. Top and angled views of a unit cell for an open-cylinder
+metasurface design deﬁned with Floquet boundary conditions in the
+transverse directions, x and y, with ﬁnite layers in the z direction.
+This example design has an outer radius ro = 211 nm, inner radius
+ri = 89 nm, height h = 942 nm, and lattice spacing L = 964 nm.
+management framework [50] to account for the large amount
+of data required to adequately train ANNs. See the Rigorous
+Coupled Wave Analysis section in the Supplemental Material
+for more information regarding the software we developed
+and employed to create synthetic training data sets [51].
+Here, we restrict the RCWA simulations to normally inci-
+dent, TE-polarized light in the range λ = [800 nm, 4000 nm]
+with 1-nm resolution, resulting in reﬂection and transmission
+spectra containing NR = NT = 3201 data points per metasur-
+face design. Designs are randomly sampled from the 4D de-
+sign space shown in Table I, with 10-nm resolution for a total
+design space of approximately 5 × 108 possible open-cylinder
+arrangements. To prevent the simulation of unphysical devices
+(e.g., devices in which the outer edge of open cylinders
+overlap), the maximum values of ro,max and ri,max are further
+restricted: ro,max ⩽0.4L, ri,max ⩽0.8ro, and ri < ro. This re-
+duces the total design space to sample to 1.3 × 107 possible
+open-cylinder arrangements. In total, we generate two sepa-
+rate training sets, one with square lattices and the other with
+hexagonal lattices. The lattice spacing deﬁnes the primitive
+vectors: L :⃗a = [L, 0],⃗b = [0, L] for square lattices and L :⃗
+a = [L, 0],⃗b = [L cos π/3, L sin π/3] for hexagonal lattices.
+Each set consists of roughly 9000 randomly sampled open-
+cylinder designs. These simulations use Nspatial harmonics =
+NG = 152, maximizing throughput while still accurately cap-
+turing trends contained in the reﬂection and transmission
+spectra. Later on, when devices of interest are chosen, we
+resimulate those candidates with an increased number of
+spatial harmonics (NG = 212) to more accurately capture the
+reﬂection and transmission behavior. (See the Rigorous Cou-
+pled Wave Analysis section in the Supplemental Material for
+more information regarding the choice of NG [51].)
+TABLE I. Ranges of values sampled during RCWA simulation
+of nanoscale silicon open cylinders.
+ro (nm)
+ri (nm)
+h (nm)
+L (nm)
+120–2000
+80–1900
+200–1000
+300–2200
+195104-2
+
+===== PAGE 3 =====
+INVERSE DESIGN OF BROADBAND HIGHLY REFLECTIVE …
+PHYSICAL REVIEW B 101, 195104 (2020)
+The reﬂection and transmission data, paired with the as-
+sociated metasurface design as described by the 4D vector
+(ro, ri, h, L), form the training and validation data sets for
+our ANNs. Because we seek to ﬁnd a telecom band reﬂector,
+we down sample the total number of data points in both the
+reﬂection and transmission spectra to NR = NT = 512 values
+in the range of [1300 nm, 1800 nm] for targeted reﬂection and
+transmission at λ0 = 1550 nm. All data sets are additionally
+scaled to the range [0, 1] to maximize the performance of the
+ANNs with existing training algorithms. The reﬂection and
+transmission spectra are already in this range; however, the
+metasurface design variables (ro, ri, h, L) must be scaled by
+their maximum considered values: (r∗
+o =
+ro
+ro,max ), (r∗
+i =
+ri
+ri,max ),
+(h∗=
+h
+hmax ), (L∗=
+L
+Lmax ). We note that the choice of 9000
+designs is somewhat arbitrary but sufﬁcient for our case:
+the ANNs successfully converge during training and predict
+metasurface designs within the parameter space with high
+ﬁdelity (coefﬁcient of determination R2 ≈1). To the authors’
+knowledge, no studies currently exist which connect the min-
+imum amount of metasurface training data needed to the size
+of the input parameter space.
+We construct and train the ANNs with our curated data
+on a single Nvidia RTX-2080Ti GPU using the KERAS [52]
+library with the TENSORFLOW [53] back end. We reserve 10%
+of the data for performance evaluation after training, reserving
+an additional 10% for validation during training, using a batch
+size of 1024. The ANN is trained using the KERAS imple-
+mentation of the ADAM optimizer [52,54] using the default
+values for the ADAM hyperparameters (learning_rate = 0.001,
+beta_1 = 0.9, beta_2 = 0.999, amsgrad = False) and with
+the mean square error loss function. The ANNs train for up to
+2000 generations with early stopping criteria loss < 10−9.
+All ANNs utilized in this work use dense layers with the
+rectiﬁed linear unit (ReLU) activation function, except for
+the use of the sigmoid activation function in the ﬁnal layer,
+limiting the output to the range [0, 1].
+We start by considering an ANN that predicts the reﬂec-
+tion and transmission spectra associated with a given open-
+cylinder metasurface, i.e., a spectra predicting network (SPN).
+The architecture of the SPN is described by Eq. (1):
+4 −8NR −6NR −4NR −2NR −
+NR −NR,
+NT −NT,
+(1)
+where the values in Eq. (1) represent the number of neurons
+at the layer, the dashes indicate different layers, with the ﬁrst
+layer appearing on the leftmost part of the equation, and the
+bracket indicates a fork in the neural network topology. The
+SPN is shown schematically in Fig. 2(a), providing further
+clariﬁcation of the notation in Eq. (1). (See the Artiﬁcial
+Neural Network Architecture, Training, and Performance sec-
+tion in the Supplemental Material for the KERAS-generated
+architecture of the SPN [51].) These SPNs take the input
+device designs in the form of (r∗
+o, r∗
+i , h∗, L∗) and pass it
+through four dense layers before splitting into two separate
+output branches to independently handle the prediction of the
+reﬂection and transmission spectra, shown in Fig. 2(b). In
+principle, this input layer can be arbitrarily large to accom-
+pany more complex parameter spaces, keeping in mind that
+FIG. 2. (a) SPN architecture. The SPN is trained to rapidly pre-
+dict the expected reﬂection and transmission spectra. (b) A compar-
+ison of the RCWA-generated spectra (green) and the SPN-predicted
+spectra (black) for reﬂection (solid) and transmission (dotted) shows
+general trend agreement. (c) DPN architecture. The DPN may be
+trained independently with the raw RCWA simulation data (IDPN)
+or as part of a pseudo autodecoder (PDPN). (d) Open-cylinder
+metasurface predicted by the DPN based on input spectral data.
+195104-3
+
+===== PAGE 4 =====
+HARPER, COYLE, VERNON, AND MILLS
+PHYSICAL REVIEW B 101, 195104 (2020)
+larger parameter spaces will require larger training data sets
+to converge.
+There are two essential advantages of training an SPN. The
+ﬁrst advantage is with sufﬁcient training data, the SPN begins
+to coarsely mimic the computational outputs of RCWA for
+the range of open cylinders considered in Table I. This is
+true mimicry in the sense that the SPN does not really learn
+RCWA but instead is able to draw overarching mathematical
+patterns which correlate the input parameter values with the
+output reﬂection and transmission spectra. This important
+distinction makes the spectral outputs of the SPN better suited
+for solving the inverse design problem. The second advantage
+is an adequately trained SPN is able to compute additional
+output spectra many times faster than the original CEM (in
+our case, the SPN is about 1 million times faster than RCWA).
+As long as the training data are sufﬁcient, these two features
+are ultimately what allow ANNs to converge for much larger
+parameter spaces.
+Second, we create an ANN with the purpose of corre-
+lating reﬂection and transmission spectra with open-cylinder
+designs: a design-predicting network (DPN). The DPN archi-
+tecture is described by
+NR −NR −8NR −NR −NR −NR
+NT −NT −8NT −NT −NT −NT
+
+−2NR −NR −1
+2NR −32 −4.
+(2)
+The DPN architecture is illustrated in Fig. 2(c). (See
+the Artiﬁcial Neural Network Architecture, Training, and
+Performance section in the Supplemental Material for the
+KERAS-generated architecture of the DPN [51].) Simulated
+spectra and the associated metasurfaces form the input and
+output of the DPN, respectively. This DPN may be trained
+either independently with the raw RCWA simulation data
+(IDPN) or with the assistance of the SPN shown in Fig. 2(b),
+forming a pseudo autodecoder DPN (PDPN). We call the
+SPN + DPN conﬁguration a pseudo autodecoder due to its
+resemblance to pseudo autoencoder architecture [38,48]. The
+SPN layers are frozen during the training of the DPN in the
+PAD conﬁguration. The two input layer branches of the DPN
+take in respective reﬂection and transmission spectra. These
+spectra pass through ﬁve dense layers before merging and
+compressing through four more dense layers of decreasing
+size. The ﬁnal layer contains four output nodes representing
+the device design in the form of (r∗
+o, r∗
+i , h∗L∗), shown in
+Fig. 2(d).
+III. ANN RESULTS AND USE FOR INVERSE DESIGN
+Performance is averaged across multiple replicas of each
+ANN. Training ANNs is an inherently stochastic process
+stemming from the use of stochastic gradient descent in the
+ADAM optimizer [54], along with the random assignment
+of data to training and validation data sets. This results in
+ANNs with slightly different weights and slightly different
+performances each time an ANN is trained. In every case, the
+SPN, IDPN, and PDPN network architectures all successfully
+converge, as conveyed by the validation loss function vs
+generations plot shown in Fig. 3(a). The predictive powers of
+both the IDPN and PDPN are then evaluated by harnessing the
+FIG. 3. (a) Loss value comparison for single replicas of the
+simulator network (blue), the IDPN (red), and the PDPN (purple). All
+three networks successfully converge, with the PDPN outperforming
+the IDPN. (b) Performance comparison of the IDPN (red) and PDPN
+(purple) on validation data sets averaged across ten replicas. The
+input and output validation data more closely correlate in the PDPN
+than in the IDPN (error bars are determined by err = σR2/
+√
+10).
+(c) and (d) Lattice regression performance plot for single DPN
+replicas of (c) the IDPN and (d) the PDPN, demonstrating superior
+performance of the PDPN.
+aforementioned 10% of data set aside for validation (the SPN
+validation is implicitly shown in the PDPN validation because
+it was used to train it). By plotting the actual device parame-
+ters in the validation data against the predicted values output
+by the IDPN and PDPN, the better network architecture is
+revealed by the coefﬁcient of determination R2. A comparison
+for all design parameters is shown in Fig. 3(b), with examples
+of regression plots for the lattice spacing shown in Fig. 3(c)
+for the IDPN and Fig. 3(d) for the PDPN. (See Fig. S4 in the
+Supplemental Material for all regression plots [51].) For all
+parameters in question, the PDPN outperforms the IDPN in
+predictive power and also has fewer outliers on its regression.
+Previous work [38] suggested that while the functional
+relationship between the device geometry and the resulting
+reﬂection and transmission performance spectra is guaranteed
+to be one to one, the inverse does not necessarily hold:
+(R, T ) = f (ro, ri, h, L),
+(ro, ri, h, L)̸ = f (R, T ).
+(3)
+This is known as the many-to-one problem. In the case
+of metasurface design, different metasurfaces may produce
+similar reﬂection and transmission spectra, and thus, an ANN
+may struggle to learn a functional relationship capable of
+differentiating these geometries. Although we found that the
+IDPN [Fig. 2(c)] was able to converge, it struggled to consis-
+tently predict device geometries from targeted performance
+spectra (Figs. 3(a) and 3(b); see Fig. S4 for the complete
+regression performance of the DPN [51]). This is exempliﬁed
+by the outliers seen in Fig. 3(c), as well as the lack of ﬁdelity
+195104-4
+
+===== PAGE 5 =====
+INVERSE DESIGN OF BROADBAND HIGHLY REFLECTIVE …
+PHYSICAL REVIEW B 101, 195104 (2020)
+(a)
+(b)
+(c)
+(e)
+(d)
+(e)
+(d)
+Square Lattice
+Hexagonal Lattice
+Target
+Transmission
+Target
+Re ection
+Predicted
+Transmission
+Predicted
+Re ection
+Predicted
+Design
+Design
+Predicting
+Network
+Spectra
+Predicting
+Network
+T
+T
+R
+R
+FIG. 4. Inverse design pipeline for open-cylinder metasurfaces with targeted performance. (a) User-input targeted broadband reﬂection
+and transmission spectra centered around λ0 = 1550 nm. (b) Inverse ANN architecture formed by “ﬂipping and stitching” together the
+already-trained PDPN and SPN. (c) SPN output indicating the predicted performance of the open-cylinder metasurface designed by the PDPN,
+showing good agreement with the core features of the target spectra. Together, the PDPN and SPN predict both the metasurface design and
+resulting reﬂection and transmission spectrum based on the desired input spectra. High-resolution RCWA veriﬁcation of (d) the square lattice
+open-cylinder metasurface and (e) the hexagonal lattice.
+in predicting input design variables such as the inner radius,
+R2 = 83.6%. Fortunately, we were able to improve upon this
+via the assistance of the SPN shown in Fig. 2(a), forming a
+PAD architecture [38,48]. In this latter case, the PAD input
+will be the same as the PAD output. Without the pretrained
+SPN, the PAD would learn an arbitrary high-dimensional
+representation of the device design; instead, we can force the
+PAD to learn a speciﬁc high-dimensional representation of
+the device design (the reﬂection and transmission spectra) by
+coupling the output of the pretrained SPN to the input of the
+DPN and allowing only the DPN layers of the PAD update
+during training, i.e., the pretrained SPN layers are “frozen”
+during training. By forcing the entire PAD to directly associate
+the input device geometry with the output device geometry,
+we greatly reduce the number of variables over which to
+minimize loss (NR + NT →4), improving the ability of the
+195104-5
+
+===== PAGE 6 =====
+HARPER, COYLE, VERNON, AND MILLS
+PHYSICAL REVIEW B 101, 195104 (2020)
+DPN to accurately predict device designs, giving an average
+coefﬁcient of determination R2 = 96.4% [for all parameters in
+question, the PDPN outperforms the IDPN in predictive power
+while also having fewer outliers in its regression; Figs. 3(b)–
+3(d)]. This improvement is strictly attributable to the fact that
+the output spectral data from the SPN are built upon ﬁtting
+functions. These mathematical ﬁts capture only the general
+trends connecting the input parameter space to the output
+spectra, allowing the DPN to negotiate the overall patterns
+instead of each individual spectral value. To describe this
+from another perspective, consider the ﬁner spectral details
+observed in the RCWA runs [e.g., Fig. 2(b)] which often have
+oscillations around an average value. If the DPN is trained on
+many sets of such data, it will try to account for these features,
+ultimately overcorrecting the general trends in an attempt to
+capture these ﬂuctuations.
+The PAD not only delivers a SPN and PDPN combination
+with incredible predictive capability but also provides a way
+to interpret the predictions of an ANN via the SPN portion
+of the network like the pseudo autoencoder considered by Liu
+et al. [38]. By inverting and stitching together the now trained
+PDPN and SPN networks, we can create an inverse design
+pipeline: a user-deﬁned spectrum [Fig. 4(a)] is ﬁrst supplied to
+the PDPN [Fig. 4(b)], designing a device with reﬂection and
+transmission spectra that best meet the target criterion. The
+PDPN-predicted design is then fed into the SPN, delivering a
+near-instantaneous prediction of the device’s performance, as
+shown in Fig. 4(c). It is important to realize that the PDPN
+will not necessarily prescribe a design that exactly ﬁts the
+user-deﬁned spectrum. Instead, it will deliver a design that
+both exists within the parameter space on which it was trained
+and best ﬁts the target features: one is guaranteed to obtain
+an open-cylinder design within the range of Table I whose
+reﬂection and transmission features are closest to targeted
+performance. This guarantee proves to be extremely useful
+when the training data ranges are preconstrained by fabrica-
+tion tolerances.
+The utility of this inverted PAD network is demonstrated
+by the choice of target spectra shown in Fig. 4. By querying
+for an open-cylinder square lattice device with broadband
+high reﬂectivity centered around λ0 = 1550 nm, a candidate is
+found with device parameters ro = 279 nm, ri = 77 nm, h =
+593 nm, |⃗L| = 758 nm. When studying this predicted device
+with a high-resolution RCWA simulation, we ﬁnd that the
+predicted performance meets and even exceeds the target cri-
+teria: λ ⩾450 nm, λ0 = 1550 nm, λ/λ0 > ±12.5% with
+individual reﬂection peaks with T ⩽10−4 [Fig. 4(d)]. This
+same procedure is repeated with the hexagonal lattice train-
+ing data. A similar broadband device is uncovered, achiev-
+ing T (1.25 μm ⩽λ ⩽1.75 μm) < 10−1 with geometry ro =
+259 nm, ri = 72 nm, h = 571 nm, |⃗L| = 743 nm.
+IV. MODAL ANALYSIS
+In this section, we analyze the eigenmodes within the
+cylinder geometry studied in Ref. [16] (r = 221 nm, h =
+502 nm, L = 679 nm) and a particular high-performance
+open-cylinder metasurface geometry designed by the PDPN
+(ro = 247 nm, ri = 106 nm, h = 804 nm, L = 870 nm)
+to
+better understand the origin of the highly reﬂective broadband
+(f)
+(e)
+(c)
+(d)
+(a)
+(b)
+FIG. 5. Comparison of (a), (c), and (e) solid cylinders with
+geometry r = 221 nm, h = 502 nm, L = 679 nm and (b), (d), and
+(f) open cylinders with geometry ro = 247 nm, ri = 106 nm, h =
+804 nm, L = 870 nm. (a) and (b) The real component of the ﬁrst 15
+eigenmodes Re{λi} for three different wavelengths in the reﬂection
+spectra for solid and open cylinders. Re{λi} is plotted on a log scale to
+show the signiﬁcant difference in values between the ﬁrst few eigen-
+modes and the rest of the eigenmodes. Insets show the top view of the
+unit cell. (c) and (d) Comparison of reﬂection spectra and number of
+contributing eigenmodes for both geometries, showing 2 ⩽Nmodes ⩽
+10 active modes across the range of interest (λ ≈[1.3 μm, 2.0 μm]).
+The reﬂection spectra are marked with circles corresponding to the
+wavelengths considered in (a) and (b). (e) and (f) The ﬁrst ten Ey
+mode proﬁles with the active modes highlighted in the corresponding
+color.
+behavior of both simulated cases. Such modal information can
+be extracted from the full electromagnetic ﬁelds computed
+with RCWA [55]:
+(z) = We−⃗λZ⃗c,
+(4)
+195104-6
+
+===== PAGE 7 =====
+INVERSE DESIGN OF BROADBAND HIGHLY REFLECTIVE …
+PHYSICAL REVIEW B 101, 195104 (2020)
+where (z) is the complex-valued electric ﬁeld at a given
+normalized depth Z = z/z0, with z0 = 1 μm, W is a matrix
+containing the mode proﬁles,⃗λ is a diagonal matrix contain-
+ing each mode’s complex-valued propagation constant, and⃗
+c contains the amplitudes contained within each mode. In
+this representation, the real component of the ith propaga-
+tion constant Re{λi} determines to what extent the ith mode
+decays. Because our metasurface layers are on the order of
+1 μm, the number of contributing modes can be represented
+by Nmodes = arg (Re{λi} < 1).
+The values of Re{λi} at three wavelengths corresponding to
+local extrema in the reﬂection spectra are shown in Figs. 5(a)
+and 5(b) for the cylinder geometry and open-cylinder ge-
+ometry. We then compute Nmodes across all wavelengths for
+these two designs and plot them alongside the reﬂection
+spectra, shown in Figs. 5(c) and 5(d). In both solid- and open-
+cylinder metasurfaces we ﬁnd 2 ⩽Nmodes ⩽10, depending
+on the wavelength of incident light. This indicates that both
+the number and amplitude within each active mode ﬂuctuate
+over the region of broadband reﬂection. Moreover, we ﬁnd
+the individual modal proﬁles are wavelength dependent [see
+Figs. 5(e) and 5(f)]. The total number of modes, the shape of
+the modes, and which modes are active at any given λ are thus
+a function of λ, making the task of orchestrating these modes
+to create the reﬂection spectra observed in Figs. 5(c) and 5(d)
+extremely onerous for all but the simplest geometries.
+Previous research suggested it may be possible to orches-
+trate modal contributions to interfere with the incoming wave,
+resulting in nearly 100% reﬂection [56]. However, this was
+considered in a two-mode regime geometry, whereas the two
+systems we are considering convey the interplay of ﬁve or
+more at any given wavelength. Careful management of the
+interference of each mode within the metasurface to design
+a geometry with target performance is infeasible. Indeed,
+attempting such a solution as the design space increases
+to include not only the open-cylinder geometry but more
+complicated Bravais lattices, unit cells containing multiple
+meta-atoms, and different constituent materials is simply im-
+possible. We conclude that the ANN-based solution to the
+inverse design of highly reﬂecting metasurface devices is both
+more achievable and more appropriate than an approach that
+requires deliberate handling of the active eigenmodes.
+V. CONCLUSION
+Metamaterials are a strong candidate for the design and
+fabrication of the next generation of multifunctional materials.
+Even with this limited simple design, the near-inﬁnite number
+of available conﬁgurations makes exploring the parameter
+space a daunting task. However, by judiciously building and
+training ANNs, we showed a general pathway to solving
+the inverse design problem for metasurfaces. A PAD-trained
+PDPN was capable of advising open-cylinder metasurface de-
+signs by prescription. This network was then used to uncover
+an open-cylinder metasurface demonstrating high reﬂectivity
+R ⩾99% with λ = 450 nm of bandwidth, centered around a
+target wavelength λ0 = 1550 nm. This performance exceeded
+the reﬂection bandwidths of comparable devices reported in
+previous studies. Modal analysis of this broadband design
+conveyed the complicated interaction of two to ten signiﬁcant
+modes over the range of broadband reﬂection. From this,
+we claimed that ANNs provide a more efﬁcient and general
+way for designing metasurfaces. Additionally, attempting to
+negotiate reﬂection properties by tracking modal interplay be-
+comes infeasible for anything but the simplest cases. Consid-
+ering other metasurfaces patterns is the immediate extension
+of this research, as well as considering different materials
+(other dielectrics, polymers), Bravais lattices, and complex
+unit cells.
+While we saw sufﬁcient predictive performance, the gen-
+eral pipeline for generating training data, the choice of neu-
+ral network architecture, and the training parameters of the
+neural networks can all be subject to further examination. For
+example, different architectures could decrease the amount of
+training data necessary for convergence, or transfer learning
+methods could be implemented to encompass multiple types
+of metasurfaces into a singular ANN. All ANN-predicted
+designs can be further optimized by hybridizing existing
+optimization routines into the protocol or by directly factoring
+in manufacturing-related constraints. Finally, initial attempts
+utilizing modern electron-beam lithography and reactive ion
+etching techniques have shown the proposed open-cylinder
+geometries are realizable. Future work will involve scaling the
+manufacture process and assessing the optical performance of
+the fabricated metasurfaces.
+ACKNOWLEDGMENTS
+We would like to thank M. Weber, J. Thompson, H.
+Nelson-Quillin, and I. Idehenre for many useful discussions.
+We would like to thank the Wright Brothers Institute for use
+of their facilities. Funding for this work was provided by
+the Air Force Research Laboratory (AFRL) under Contract
+No. MaRSS TO 09 FA8650-16-F-5419. The research was
+performed while E.S.H. held an NRC Research Associateship.
+[1] L. Lewin, The electrical constants of a material loaded with
+spherical particles, J. Inst. Electr. Eng., Part III 94, 65 (1947).
+[2] C. M. Soukoulis, S. Linden, and M. Wegener, Negative refrac-
+tive index at optical wavelengths, Science 315, 47 (2007).
+[3] V. M. Shalaev, Optical negative-index metamaterials, Nat.
+Photonics 1, 41 (2007).
+[4] J. Valentine, S. Zhang, T. Zentgraf, E. Ulin-Avila, D. A.
+Genov, G. Bartal, and X. Zhang, Three-dimensional optical
+metamaterial with a negative refractive index, Nature 455, 376
+(2008).
+[5] L. Verslegers, P. B. Catrysse, Z. Yu, J. S. White, E. S.
+Barnard, M. L. Brongersma, and S. Fan, Planar lenses based
+on nanoscale slit arrays in a metallic ﬁlm, Nano Lett. 9, 235
+(2009).
+[6] N. I. Zheludev and Y. S. Kivshar, From metamaterials to
+metadevices, Nat. Mater. 11, 917 (2012).
+195104-7
+
+===== PAGE 8 =====
+HARPER, COYLE, VERNON, AND MILLS
+PHYSICAL REVIEW B 101, 195104 (2020)
+[7] Z. Liu, D. Zhu, S. P. Rodrigues, K. T. Lee, and W. Cai,
+Generative model for the inverse design of metasurfaces, Nano
+Lett. 18, 6570 (2018).
+[8] A. M. Shaltout, V. M. Shalaev, and M. L. Brongersma, Spa-
+tiotemporal light control with active metasurfaces, Science 364,
+648 (2019).
+[9] S. A. Maier, M. L. Brongersma, P. G. Kik, S. Meltzer, A. A.
+Requicha, and H. A. Atwater, Plasmonics - A route to nanoscale
+optical devices, Adv. Mater. 13, 1501 (2001).
+[10] A. Boltasseva and H. A. Atwater, Low-loss plasmonic metama-
+terials, Science 331, 290 (2011).
+[11] H. A. Atwater, A. R. Davoyan, O. Ilic, D. Jariwala, M. C.
+Sherrott, C. M. Went, W. S. Whitney, and J. Wong, Materi-
+als challenges for the Starshot lightsail, Nat. Mater. 17, 861
+(2018).
+[12] K. Aydin, V. E. Ferry, R. M. Briggs, and H. A. Atwater,
+Broadband polarization-independent resonant light absorption
+using ultrathin plasmonic super absorbers, Nat. Commun. 2,
+517 (2011).
+[13] W. Guo, Y. Liu, and T. Han, Ultra-broadband infrared metasur-
+face absorber, Opt. Express 24, 20586 (2016).
+[14] B. Slovick, Z. G. Yu, M. Berding, and S. Krishnamurthy, Per-
+fect dielectric-metamaterial reﬂector, Phys. Rev. B 88, 165116
+(2013).
+[15] P. Moitra, B. A. Slovick, W. Li, I. I. Kravchencko, D. P. Briggs,
+S. Krishnamurthy, and J. Valentine, Large-scale all-dielectric
+metamaterial perfect reﬂectors, ACS Photonics 2, 692 (2015).
+[16] P. Moitra, B. A. Slovick, Z. G. Yu, S. Krishnamurthy, and
+J. Valentine, Experimental demonstration of a broadband all-
+dielectric metamaterial perfect reﬂector, Appl. Phys. Lett. 104,
+171102 (2014).
+[17] J. Witzens, M. Lonˇcar, and A. Scherer, Self-collimation in
+planar photonic crystals, IEEE J. Sel. Top. Quantum Electron.
+8, 1246 (2002).
+[18] A. Krasnok, M. Tymchenko, and A. Alù, Nonlinear metasur-
+faces: A paradigm shift in nonlinear optics, Mater. Today 21, 8
+(2018).
+[19] D. Neshev and I. Aharonovich, Optical metasurfaces: New
+generation building blocks for multi-functional optics, Light:
+Sci. Appl. 7, 58 (2018).
+[20] W. T. Chen, A. Y. Zhu, J. Sisler, Y. W. Huang, K. M. Yousef,
+E. Lee, C. W. Qiu, and F. Capasso, Broadband achromatic
+metasurface-refractive optics, Nano Lett. 18, 7801 (2018).
+[21] K. E. Chong, I. Staude, A. James, J. Dominguez, S. Liu, S.
+Campione, G. S. Subramania, T. S. Luk, M. Decker, D. N.
+Neshev, I. Brener, and Y. S. Kivshar, Polarization-independent
+silicon metadevices for efﬁcient optical wavefront control,
+Nano Lett. 15, 5369 (2015).
+[22] P. Qiao, W. Yang, and C. J. Chang-Hasnain, Recent advances
+in high-contrast metastructures, metasurfaces, and photonic
+crystals, Adv. Opt. Photonics 10, 180 (2018).
+[23] S. M. Kamali, E. Arbabi, A. Arbabi, and A. Faraon, A re-
+view of dielectric optical metasurfaces for wavefront control,
+Nanophotonics 7, 1041 (2018).
+[24] M.
+V.
+Rybin,
+K.
+B.
+Samusev,
+A.
+N.
+Poddubny,
+A.
+Hosseinzadeh, E. Semouchkina, G. Semouchkin, Y. S. Kivshar,
+and M. F. Limonov, Fano resonances in all-dielectric metama-
+terials, in 7th International Congress on Advanced Electromag-
+netic Materials in Microwaves and Optics: Metamaterials 2013
+(IEEE, 2013), pp. 226–228.
+[25] S. Jahani and Z. Jacob, All-dielectric metamaterials, Nat.
+Nanotechnol. 11, 23 (2016).
+[26] I. M. Pryce, K. Aydin, Y. A. Kelaita, R. M. Briggs, and
+H. A. Atwater, Highly strained compliant optical metama-
+terials with large frequency tunability, Nano Lett. 10, 4222
+(2010).
+[27] Y. Yao, R. Shankar, M. A. Kats, Y. Song, J. Kong, M. Loncar,
+and F. Capasso, Electrically tunable metasurface perfect ab-
+sorbers for ultrathin mid-infrared optical modulators, Nano
+Lett. 14, 6526 (2014).
+[28] S. Liu, P. P. Vabishchevich, A. Vaskin, J. L. Reno, G. A. Keeler,
+M. B. Sinclair, I. Staude, and I. Brener, An all-dielectric meta-
+surface as a broadband optical frequency mixer, Nat. Commun.
+9, 2507 (2018).
+[29] Q. Zhao, J. Zhou, F. Zhang, and D. Lippens, Mie resonance-
+based dielectric metamaterials, Mater. Today 12, 60 (2009).
+[30] O. Mitrofanov, F. Dominec, P. Kužel, J. L. Reno, I. Brener,
+U.-C. Chung, C. Elissalde, M. Maglione, and P. Mounaix,
+Near-ﬁeld probing of Mie resonances in single TiO2 mi-
+crospheres at terahertz frequencies, Opt. Express 22, 23034
+(2014).
+[31] C. Wu, N. Arju, G. Kelp, J. A. Fan, J. Dominguez, E. Gonzales,
+E. Tutuc, I. Brener, and G. Shvets, Spectrally selective chiral
+silicon metasurfaces based on infrared Fano resonances, Nat.
+Commun. 5, 3892 (2014).
+[32] C. M. Lalau-Keraly, S. Bhargava, O. D. Miller, and E.
+Yablonovitch, Adjoint shape optimization applied to electro-
+magnetic design, Opt. Express 21, 21693 (2013).
+[33] Z. Lin, V. Liu, R. Pestourie, and S. G. Johnson, Topology
+optimization of freeform large-area metasurfaces, Opt. Express
+27, 15765 (2019).
+[34] J. Li and K. Nallappan, Optimization of hollow-core photonic
+Bragg ﬁbers towards practical sensing implementations, Opt.
+Mater. Express 9, 1640 (2019).
+[35] C. Jin, R. R. Nadakuditi, E. Michielssen, and S. C. Rand,
+Iterative, backscatter-analysis algorithms for increasing trans-
+mission and focusing light through highly scattering random
+media, J. Opt. Soc. Am. A 30, 1592 (2013).
+[36] Z. Lin, B. Groever, F. Capasso, A. W. Rodriguez, and M.
+Lonˇcar, Topology-Optimized Multilayered Metaoptics, Phys.
+Rev. Appl. 9, 044030 (2018).
+[37] S. D. Campbell, D. Sell, R. P. Jenkins, E. B. Whiting, J. A. Fan,
+and D. H. Werner, Review of numerical optimization techniques
+for meta-device design [Invited], Opt. Mater. Express 9, 1842
+(2019).
+[38] D. Liu, Y. Tan, E. Khoram, and Z. Yu, Training deep neural
+networks for the inverse design of nanophotonic structures,
+ACS Photonics 5, 1365 (2018).
+[39] W. Ma, F. Cheng, and Y. Liu, Deep-Learning-Enabled On-
+Demand Design of Chiral Metamaterials, ACS Nano 12, 6326
+(2018).
+[40] M. H. Tahersima, K. Kojima, T. Koike-Akino, D. Jha, B. Wang,
+C. Lin, and K. Parsons, Deep neural network inverse modeling
+for integrated photonics, in 2019 Optical Fiber Communications
+Conference and Exhibition (OFC) (IEEE, San Diego, CA, USA,
+2019), pp. 1–3.
+[41] T. Zhang, J. Wang, Q. Liu, J. Zhou, J. Dai, X. Han, Y. Zhou,
+and K. Xu, Efﬁcient spectrum prediction and inverse design
+for plasmonic waveguide systems based on artiﬁcial neural
+networks, Photonics Res. 7, 368 (2019).
+195104-8
+
+===== PAGE 9 =====
+INVERSE DESIGN OF BROADBAND HIGHLY REFLECTIVE …
+PHYSICAL REVIEW B 101, 195104 (2020)
+[42] S.
+Inampudi
+and
+H.
+Mosallaei,
+Neural
+network
+based
+design of metagratings, Appl. Phys. Lett. 112, 241102
+(2018).
+[43] J. Peurifoy, Y. Shen, L. Jing, Y. Yang, F. Cano-renteria, B. G.
+Delacy, J. D. Joannopoulos, M. Tegmark, and M. Soljaˇci´c,
+Nanophotonic particle simulation and inverse design using arti-
+ﬁcial neural networks, Sci. Adv. 4, eaar4206 (2018).
+[44] M. M. Rai and N. K. Madavan, Application of artiﬁcial neural
+networks to the design of turbomachinery airfoils, J. Propul.
+Power 17, 176 (2001).
+[45] S. R. H. Hoole, Artiﬁcial neural networks in the solution of
+inverse electromagnetic ﬁeld problems, IEEE Trans. Magn. 29,
+1931 (1993).
+[46] Y. Kiarashinejad, S. Abdollahramezani, M. Zandehshahvar, O.
+Hemmatyar, and A. Adibi, Deep learning reveals underlying
+physics of light-matter interactions in nanophotonic devices,
+Adv. Theory Simul. 2, 1900088 (2019).
+[47] K. V. Baryshnikova, A. B. Evlyukhin, and A. S. Shalin, Mag-
+netic hot-spots in hollow silicon cylinders, J. Phys.: Conf. Ser.
+741, 012156 (2016).
+[48] E. S. Harper, M. N. Weber, and M. S. Mills, Machine accel-
+erated nano-targeted inhomogeneous structures, in 2019 IEEE
+Research and Applications of Photonics in Defense Conference
+(RAPID) (IEEE, Miramar Beach, FL, USA, 2019), pp. 1–5.
+[49] V. Liu and S. Fan, S4: A free electromagnetic solver for
+layered periodic structures, Comput. Phys. Commun. 183, 2233
+(2012).
+[50] C. S. Adorf, P. M. Dodd, V. Ramasubramani, and S. C. Glotzer,
+Simple data and workﬂow management with the signac frame-
+work, Comput. Mater. Sci. 146, 220 (2018).
+[51] See Supplemental Material at http://link.aps.org/supplemental/
+10.1103/PhysRevB.101.195104 for information regarding the
+software we developed and employed to create synthetic train-
+ing data sets, the choice of the number of spatial harmonics,
+the KERAS-generated architecture of the SPN and DPN, and all
+regression plots.
+[52] F. Chollet et al., KERAS, https://keras.io.
+[53] M. Abadi, A. Agarwal, P. Barham, E. Brevdo, Z. Chen, C. Citro,
+G. S. Corrado, A. Davis, J. Dean, M. Devin, S. Ghemawat, I.
+Goodfellow, A. Harp, G. Irving, M. Isard, Y. Jia, R. Jozefowicz,
+L. Kaiser, M. Kudlur, J. Levenberg, D. Mane, R. Monga, S.
+Moore, D. Murray, C. Olah, M. Schuster, J. Shlens, B. Steiner,
+I. Sutskever, K. Talwar, P. Tucker, V. Vanhoucke, V. Vasudevan,
+F. Viegas, O. Vinyals, P. Warden, M. Wattenberg, M. Wicke, Y.
+Yu, and X. Zheng, Tensorﬂow: Large-scale machine learning on
+heterogeneous distributed systems, arXiv:1603.04467.
+[54] D. P. Kingma and J. Ba, Adam: A Method for Stochastic
+Optimization, arXiv:1412.6980.
+[55] R. C. Rumpf, Improved formulation of scattering matrices
+for semi-analytical methods that is consistent with convention,
+Prog. Electromagn. Res. B 35, 241 (2011).
+[56] V. Karagodsky, F. G. Sedgwick, and C. J. Chang-Hasnain,
+Theoretical analysis of subwavelength high contrast grating
+reﬂectors, Opt. Express 18, 16973 (2010).
+195104-9

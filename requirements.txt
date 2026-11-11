@@ -1,0 +1,8 @@
+# Core ML stack
+torch>=2.0
+numpy>=1.24
+matplotlib>=3.7
+
+# Optional: real physics solvers (swap in for the analytic surrogates)
+# S4 (RCWA, used by Paper 2) and Meep/COMSOL/Lumerical (FEM/FDTD, Paper 1)
+# are not pip-installable on all platforms; install separately if needed.
